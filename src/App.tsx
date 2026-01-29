@@ -1,24 +1,36 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { useEffect, useState } from 'react';
+import cn from 'classnames';
 import { UserWarning } from './UserWarning';
 import { getTodos, USER_ID } from './api/todos';
 import { Todo } from './types/Todo';
 
+enum Filter {
+  All = 'all',
+  Active = 'active',
+  Completed = 'completed',
+}
+
+enum ErrorMessage {
+  None = '',
+  Load = 'Unable to load todos',
+}
+
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [error, setError] = useState('');
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [error, setError] = useState<ErrorMessage>(ErrorMessage.None);
+  const [filter, setFilter] = useState<Filter>(Filter.All);
 
   useEffect(() => {
     if (!USER_ID) {
       return;
     }
 
-    setError('');
+    setError(ErrorMessage.None);
     getTodos()
       .then(setTodos)
-      .catch(() => setError('Unable to load todos'));
+      .catch(() => setError(ErrorMessage.Load));
   }, []);
 
   useEffect(() => {
@@ -26,7 +38,7 @@ export const App: React.FC = () => {
       return;
     }
 
-    const timer = setTimeout(() => setError(''), 3000);
+    const timer = setTimeout(() => setError(ErrorMessage.None), 3000);
 
     return () => clearTimeout(timer);
   }, [error]);
@@ -36,15 +48,16 @@ export const App: React.FC = () => {
   }
 
   const visibleTodos = todos.filter(todo => {
-    if (filter === 'active') {
-      return !todo.completed;
-    }
+    switch (filter) {
+      case Filter.Active:
+        return !todo.completed;
 
-    if (filter === 'completed') {
-      return todo.completed;
-    }
+      case Filter.Completed:
+        return todo.completed;
 
-    return true;
+      default:
+        return true;
+    }
   });
 
   const activeCount = todos.filter(todo => !todo.completed).length;
@@ -79,7 +92,7 @@ export const App: React.FC = () => {
               <div
                 key={todo.id}
                 data-cy="Todo"
-                className={`todo ${todo.completed ? 'completed' : ''}`}
+                className={cn('todo', { completed: todo.completed })}
               >
                 <label className="todo__status-label">
                   <input
@@ -124,27 +137,33 @@ export const App: React.FC = () => {
             <nav className="filter" data-cy="Filter">
               <a
                 href="#/"
-                className={`filter__link ${filter === 'all' ? 'selected' : ''}`}
+                className={cn('filter__link', {
+                  selected: filter === Filter.All,
+                })}
                 data-cy="FilterLinkAll"
-                onClick={() => setFilter('all')}
+                onClick={() => setFilter(Filter.All)}
               >
                 All
               </a>
 
               <a
                 href="#/active"
-                className={`filter__link ${filter === 'active' ? 'selected' : ''}`}
+                className={cn('filter__link', {
+                  selected: filter === Filter.Active,
+                })}
                 data-cy="FilterLinkActive"
-                onClick={() => setFilter('active')}
+                onClick={() => setFilter(Filter.Active)}
               >
                 Active
               </a>
 
               <a
                 href="#/completed"
-                className={`filter__link ${filter === 'completed' ? 'selected' : ''}`}
+                className={cn('filter__link', {
+                  selected: filter === Filter.Completed,
+                })}
                 data-cy="FilterLinkCompleted"
-                onClick={() => setFilter('completed')}
+                onClick={() => setFilter(Filter.Completed)}
               >
                 Completed
               </a>
@@ -166,15 +185,16 @@ export const App: React.FC = () => {
       {/* Add the 'hidden' class to hide the message smoothly */}
       <div
         data-cy="ErrorNotification"
-        className={`notification is-danger is-light has-text-weight-normal ${
-          error ? '' : 'hidden'
-        }`}
+        className={cn(
+          'notification is-danger is-light has-text-weight-normal',
+          { hidden: !error },
+        )}
       >
         <button
           data-cy="HideErrorButton"
           type="button"
           className="delete"
-          onClick={() => setError('')}
+          onClick={() => setError(ErrorMessage.None)}
         />
         {/* show only one message at a time */}
         {error}
